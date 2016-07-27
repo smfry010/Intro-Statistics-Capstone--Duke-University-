@@ -1,0 +1,320 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(RColorBrewer)
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+* * *
+
+## Part 1: Data
+Source of the Data: Centers for Disease Control and Prevention (http://nccd.cdc.gov/)
+
+As of 2001, Each of the 50 states (including Guam, Puerto Rico, District of Columbia, and US Virgin Islands) actively participate in the BRFSS (Behavioral Risk Factor Surveillance System) survey.  The observations in the sample have been collected by randomly making telephone calls via landline and/or cellular telephone.  There are 491,775 observations 
+and 330 variables included in the data set. 
+
+The sampling method used for this study was based on the following conditions:
+
+  * Individuals must have a landline or cellular telephones
+  * Individuals must be residing in the United States
+  * Individuals must have a permanent residence or are in college
+  * Individuals must be 18 years of age or older
+  
+As long as the above conditions are met, an adult is randomly selected from the qualifying
+household(s) to participate in an interview.  This infers that the results may only
+be generalized to adults (>= 18 years of age), having access to telephones, residing in the 
+United States, and having a permanent residence and/or in college.
+
+The data set includes response for 2013 and 2014.  When comparing the number of 
+survey responses in 2013 to 2014, it appears that 2014 data are incomplete.
+<br>
+
+```{r plot the data}
+ggplot(brfss2013, aes(iyear)) + geom_bar() + ggtitle("Results by Year") + xlab("Year") + ylab("Number of Samples") 
+set2013 <- subset(brfss2013,iyear==2013)
+set2014 <- subset(brfss2013,iyear==2014)
+ggplot(set2013, aes(imonth)) + geom_bar() + ggtitle("2013 Results by Month") + xlab("Month") + ylab("Number of Samples") 
+summary(set2013$imonth)
+ggplot(set2014, aes(imonth)) + geom_bar() + ggtitle("2014 Results by Month") + xlab("Month") + ylab("Number of Samples") 
+summary(set2014$imonth)
+
+```
+
+For this reason, the forthcoming analyses will be based solely on 2013 data.
+
+* * *
+
+## Part 2: Research questions
+
+**Research question 1:**
+
+Given that an adult residing in the United States has been identified as having 'High Cholesterol', what is the likelihood that this person will also be Obese (having a high BMI)? Perform a comparison that also includes gender to see if there are any patterns that arise.
+
+The reason that I am asking this question is that I would like to know if there is a 
+relationship between an unhealthy cholesterol level and obesity.  It would also be interesting
+to know if gender is an influencer to the analysis.
+
+VARIABLE : CHOLESTEROL LEVEL    FIELD : bloodcho (1 = High, 2 = Not High, NA = Never Checked)
+
+VARIABLE : OBESITY      FIELD    : X_bmi5cat (1 = Underweight, 2 = Normal, 3 = Overweight, 4 = Obese, NA = Missing)
+
+VARIABLE : GENDER       FIELD    : sex (1 = Male, 2 = Female, NA = Missing)
+
+* * *
+**Research question 2:**
+
+Do United States veterans have a greater propensity to become regular consumers of alcohol than non-veteran US citizens? Can you explain the differences with the BRFSS data?
+
+Based on the duties of a military veteran, there are influences that affect this population 
+that do not affect non-veterans.  Connecting these influences to a alcohol consumption 
+is not the intent of this analysis.  Instead, I merely like to know if veterans are more
+likely to become regular consumers of alcohol.
+
+VARIABLE : VETERAN     FIELD : veteran3 (1 = Yes, 2 = No)
+
+VARIABLE : ALCOHOL CONSUMPTION [DAILY]     FIELD    : avedrnk2 (Avg Alcoholic Drinks Per Day In Past 30 Days)
+
+* * *
+**Research question 3:**
+
+Is there a relationship between the number of times that a person who reported actively exercising on a weekly basis (walking, running, jogging, or swimming) and the amount of fruit that a person consumes (on a weekly basis)?  Does education level have an impact on the amount of exercise that a person undertakes?
+
+I am an avid runner, consuming more calories than most middle-aged men of similar stature. 
+Most of my calories come from protein and carbohydrates which tend to aid my active lifestyle. I do not tend to consume that many servings of fruits and vegetables.  Does research support this trend for others who are active.  I would also like to know if education level have any impact on physical activity and/or fruit consumption.
+
+VARIABLE : FRUIT CONSUMPTION     FIELD : fruit1 (Times per week only : 201 - 299)
+
+VARIABLE : RUNNING/JOGGING/WALKING/SWIMMING     FIELD    : exeroft1 (Times per week only : values 101 - 199)
+
+VARIABLE : EDUCATION LEVEL     FIELD    :  educa (1 = Never attended school, 2 = Elementary, 3 = Some High School, 4 = High School Graduate, 5 = Some College, 6 = College Graduate, N/A = Not Available)
+
+* * *
+## Part 3: Exploratory data analysis
+<br>
+
+**Research question 1:**
+
+Question: What is the probability of having high cholesterol given that the adult is  overweight or obese?
+
+```{r bmi}
+chol <- set2013[,c("sex","bloodcho", "toldhi2", "X_bmi5cat")]
+chol2 <- chol %>%
+        mutate(chol_high = ifelse(bloodcho == "Yes" & toldhi2 == "Yes", "Yes","No")) %>%
+        mutate(chol_low = ifelse(bloodcho == "Yes" & toldhi2 == "No", "Yes","No"))
+
+plot(table(chol2$X_bmi5cat,chol2$chol_high),
+     main= "Body Mass Index compared to US adults with High Cholesterol", 
+     xlab = "BMI Type", 
+     ylab = "Has High Cholesterol?",
+     col = colorRampPalette(brewer.pal(9, "Greys"))(4))
+
+```
+
+####Body Mass Index Statistics
+```{r bmi stats}
+table(chol2$chol_high)
+table(chol2$chol_high, chol2$X_bmi5cat)
+
+```
+<br>
+
+####For respondents of the survey
+
+* 38.3% have high cholesterol 
+* ... 73.4% are also overweight or obese
+* ... 26.6% are not overweight or obese
+
+* 61.7% do not have high cholesterol
+* ... 13.6% are also overweight or obese
+* ... 86.4% are not overweight or obese
+
+P(Hi Chol | Over) = (.734 * .383) / ((.734 * .383) + (.136 * .617)) = .770
+
+P(Hi Chol | Not Over) (.266 * .383) / ((.266 * .383) + (.864 * .617)) = .161
+
+Therefore there is a 77.0% chance that an overweight/obese person is going to have high cholesterol but only a 16.1% chance that a non overweight/obese person will have high cholesterol.
+<br><br>
+
+####Male Visualization
+
+```{r bmi male}
+chol2_male <-subset(chol2, sex=="Male")
+plot(table(chol2_male$X_bmi5cat, chol2_male$chol_high),
+     main = "Body Mass Index compared to US Males with High Cholesterol",  
+     xlab = "BMI Type", 
+     ylab = "Has High Cholesterol?",
+     col = colorRampPalette(brewer.pal(9, "Blues"))(4))
+
+```
+
+####Female Visualization
+
+``` {r bmi female}
+chol2_female <-subset(chol2, sex=="Female")
+plot(table(chol2_female$X_bmi5cat, chol2_female$chol_high),
+     main = "Body Mass Index compared to US Females with High Cholesterol",  
+     xlab = "BMI Type", 
+     ylab = "Has High Cholesterol?",
+     col = colorRampPalette(brewer.pal(9, "Greens"))(4))
+```
+
+####Male Summary Statistics [R Logic]
+```{r male summary}
+male_summary <- table(chol2_male$X_bmi5cat,chol2_male$chol_high)
+f1 <- data.frame(male_summary[,1])/sum(data.frame(male_summary[,1]))
+f2 <- data.frame(male_summary[,2])/sum(data.frame(male_summary[,2]))
+male_summary <- cbind(f1,f2)
+names(male_summary) <- c("No", "Yes")
+m_stats <- apply(male_summary,1,rev)
+```
+<br>
+
+####Female Summary Statistics [R Logic]
+```{r female summary}
+female_summary <- table(chol2_female$X_bmi5cat,chol2_female$chol_high)
+f1 <- data.frame(female_summary[,1])/sum(data.frame(female_summary[,1]))
+f2 <- data.frame(female_summary[,2])/sum(data.frame(female_summary[,2]))
+female_summary <- cbind(f1,f2)
+names(female_summary) <- c("No", "Yes")
+f_stats <- apply(female_summary,1,rev)
+```
+<br>
+
+####Male Summary Statistics (x-axis = Has High Cholesterol / y-axis = BMI)
+```{r male stats}
+m_stats
+```
+<br>
+
+####Female Summary Statistics (x-axis = Has High Cholesterol / y-axis = BMI)
+```{r female stats}
+f_stats
+```
+<br>
+
+The graphic and summaries indicate that males may have a disposition to have high cholesterol when being overweigh/obese.
+
+P(male Over AND High Cholesterol) = 79.8%
+
+P(female Over AND High Cholesterol) = 68.7%
+
+* * * 
+
+**Research question 2:**
+
+Question: Do United States veterans have a greater propensity to become regular consumers of alcohol than non-veteran US citizens? 
+<br><br>
+
+####Histograms and Statistics
+```{r alcohol}
+vet <- set2013[,c("avedrnk2","drnk3ge5", "veteran3")]
+
+vet <- subset(vet, !(is.na(avedrnk2)))
+vet <- subset(vet, !(is.na(veteran3)))
+vet_yes <- subset(vet, veteran3 == "Yes")
+vet_no <- subset(vet, veteran3 == "No")
+
+y <- ggplot(vet_yes, aes(avedrnk2))
+yy <- y + geom_histogram(bins = 20, color = "black", aes(y=..density.., fill=..count..)) + 
+        xlab("Average drinks per day") + 
+        ylab("Density") +
+        ggtitle("Alcohol Consumption for US Veterans")
+yy + stat_function(fun=dnorm, color = "red", args=list(mean=mean(vet_yes$avedrnk2), sd=sd(vet_yes$avedrnk2)))
+vet_yes_stat <- c(mean(vet_yes$avedrnk2), sd(vet_yes$avedrnk2))
+names(vet_yes_stat) <- c("mean", "std dev")
+vet_yes_stat
+
+y <- ggplot(vet_no, aes(avedrnk2))
+yy <- y + geom_histogram(bins = 20, color = "black", aes(y=..density.., fill=..count..)) + 
+        xlab("Average drinks per day") + 
+        ylab("Density") +
+        ggtitle("Alcohol Consumption for Non US Veterans")
+yy + stat_function(fun=dnorm, color = "red", args=list(mean=mean(vet_no$avedrnk2), sd=sd(vet_no$avedrnk2)))
+vet_no_stat <- c(mean(vet_no$avedrnk2), sd(vet_no$avedrnk2))
+names(vet_no_stat) <- c("mean", "std dev")
+vet_no_stat
+
+```
+<br>
+
+Answer: There is no statistical difference in alchohol consumption patterns between veteran and non-veterans.  
+
+* Veterans and non-veterans have similar normal distributions such that they are right skewed.
+* The summary statistics are also very similar with regard to mean and standard deviation.  
+
+Additional research can be conducted to decipher what the reasons may be for the small variation but for this task, there does not appear to be a difference.
+
+* * * 
+**Research question 3:**
+
+Question: Is there a relationship between the number of times that a person who reported actively exercising on a weekly basis (walking, running, jogging, or swimming) and the amount of fruit that a person consumes (on a weekly basis)?  
+
+Does education level have an impact on the amount of exercise that a person undertakes?  
+<br><br>
+
+```{r build tables}
+f <- subset(brfss2013, (fruit1 <= 298 & fruit1 >= 201 & exeroft1 <= 198 & exeroft1 >=101))
+# amount of time exercising, strip out leading digit
+f <- f[,c("fruit1", "exeroft1", "educa")]
+f <- subset(f,complete.cases(f) == TRUE)
+
+ff <- f %>%
+        mutate(substr(fruit1,2,3)) %>%
+        mutate(substr(exeroft1,2,3)) %>% 
+        mutate(paste0(substr(educa,1,10),"..."))
+ff <- data.frame(ff[,6], as.numeric(ff[,4]), as.numeric(ff[,5]))
+names(ff) <- c("educa", "fruit", "exeroft")
+
+g <- ggplot(ff, aes(exeroft, fruit))
+g + geom_point() + 
+        xlab("Times per week of activity (running, swimming, jogging, walking)") +
+        ylab("Times per week of consuming fruit") +
+        ggtitle("Contrast Times per Week of Activity to Fruit Consumption")
+```
+<br>
+
+The visualization does not suggest a linear relationship between the data.  If the values did exhibit a correlation, one could easily drop a trendline into the plot to represent the relationship.
+
+There does seem to be a common theme when generating the mean and standard deviations for exercise per week and fruit consumption per week.  The data for both fruit and exercise are distributed very simiarily.
+
+Secondary Question : Does education have an impact on fruit consumption OR a propensity to exercise?
+<br><br>
+
+####Impact of Education on Exercise
+```{r exercise education scatterplot}
+g_exer <- ggplot(ff, aes(exeroft))
+g_exer + geom_histogram(bins = 35, color = "black", aes(y=..density.., fill=..count..)) + xlim(0,20) + 
+        xlab("Times per week of activity (running, swimming, jogging, walking)") +
+        ylab("Density") +
+        ggtitle("Exercise Visualization") + facet_grid(. ~ educa)  
+```
+<br><br>
+
+####Impact of Education on Fruit Consumption
+``` {r fruit education scatterplot}
+g_fruit <- ggplot(ff, aes(fruit))
+g_fruit + geom_histogram(bins = 35, color = "black", aes(y=..density.., fill=..count..)) + xlim(0,20) + 
+        xlab("Times per week of consuming fruit") +
+        ylab("Density") +
+        ggtitle("Fruit Consumption Visualization") + facet_grid(. ~ educa)
+```
+
+Education does not appear to statistically impact fruit consumption OR exercise frequency.
